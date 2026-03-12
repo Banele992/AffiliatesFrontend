@@ -8,9 +8,7 @@ interface Message {
     time: string;
 }
 
-// ──────────────────────────────────────────────────────────
 //  Language definitions
-// ──────────────────────────────────────────────────────────
 type LangCode = 'en' | 'zu' | 'af' | 'pt' | 'fr';
 
 interface LangConfig {
@@ -82,9 +80,7 @@ const LANGUAGES: Record<LangCode, LangConfig> = {
     },
 };
 
-// ──────────────────────────────────────────────────────────
 //  Helpers
-// ──────────────────────────────────────────────────────────
 const getTime = () => {
     const now = new Date();
     const h = now.getHours();
@@ -101,9 +97,8 @@ const buildGreeting = (lang: LangCode): Message => ({
     time: getTime(),
 });
 
-// ──────────────────────────────────────────────────────────
 //  Component
-// ──────────────────────────────────────────────────────────
+
 const ChatBot: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [language, setLanguage] = useState<LangCode>('en');
@@ -138,7 +133,7 @@ const ChatBot: React.FC = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // ── Language switch ──────────────────────────────────
+    // Language switch 
     const switchLanguage = (code: LangCode) => {
         setLanguage(code);
         setShowLangMenu(false);
@@ -147,7 +142,7 @@ const ChatBot: React.FC = () => {
         setMessages([{ ...buildGreeting(code), id: nextId.current++ }]);
     };
 
-    // ── Send message ─────────────────────────────────────
+    // Send message
     const sendMessage = async () => {
         const text = input.trim();
         if (!text) return;
@@ -204,7 +199,7 @@ const ChatBot: React.FC = () => {
         }
     };
 
-    // ── Render ───────────────────────────────────────────
+    // Render
     return (
         <>
             {/* Chat Toggle Button */}

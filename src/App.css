@@ -278,6 +278,15 @@ body {
   border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
+.background {
+  background-image: url('./assets/background.png');
+  height: 100vh;
+  width: 100%;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
 .stat-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-md);
