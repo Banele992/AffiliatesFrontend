@@ -153,7 +153,7 @@ const ChatBot: React.FC = () => {
         setIsTyping(true);
 
         try {
-            const response = await fetch('http://localhost:5082/api/chat', {
+            const response = await fetch('http://localhost:5082/api/chat/stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -164,20 +164,81 @@ const ChatBot: React.FC = () => {
             });
 
             if (!response.ok) throw new Error('Network response was not ok');
+            if (!response.body) throw new Error('ReadableStream not supported.');
 
-            const data = await response.json();
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+            
+            let hasReceivedText = false;
+            let botMsgId = -1;
 
-            if (data.conversationId && !conversationId) {
-                setConversationId(data.conversationId);
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                // value is a Uint8Array
+                buffer += decoder.decode(value, { stream: true });
+                
+                // Process each line in the buffer
+                let newlineIndex;
+                while ((newlineIndex = buffer.indexOf('\n\n')) >= 0) {
+                    const line = buffer.slice(0, newlineIndex).trim();
+                    buffer = buffer.slice(newlineIndex + 2);
+
+                    if (line.startsWith('data: ')) {
+                        const dataStr = line.substring(6);
+                        try {
+                            const data = JSON.parse(dataStr);
+                            
+                            // Initialize conversation id if provided
+                            if (data.conversationId && !conversationId) {
+                                setConversationId(data.conversationId);
+                            }
+                            
+                            // Append new tokens
+                            if (data.text) {
+                                if (!hasReceivedText) {
+                                    hasReceivedText = true;
+                                    setIsTyping(false);
+                                    botMsgId = nextId.current++;
+                                    setMessages(prev => [
+                                        ...prev,
+                                        { id: botMsgId, text: data.text, sender: 'bot', time: getTime() }
+                                    ]);
+                                } else {
+                                    setMessages(prev => prev.map(msg => 
+                                        msg.id === botMsgId 
+                                            ? { ...msg, text: msg.text + data.text } 
+                                            : msg
+                                    ));
+                                }
+                            }
+
+                            // Append error if exists
+                            if (data.error) {
+                                if (!hasReceivedText) {
+                                    hasReceivedText = true;
+                                    setIsTyping(false);
+                                    botMsgId = nextId.current++;
+                                    setMessages(prev => [
+                                        ...prev,
+                                        { id: botMsgId, text: data.error, sender: 'bot', time: getTime() }
+                                    ]);
+                                } else {
+                                    setMessages(prev => prev.map(msg => 
+                                        msg.id === botMsgId 
+                                            ? { ...msg, text: msg.text + "\n" + data.error } 
+                                            : msg
+                                    ));
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Error parsing SSE item:', e);
+                        }
+                    }
+                }
             }
-
-            const botMsg: Message = {
-                id: nextId.current++,
-                text: data.reply || cfg.errorServer,
-                sender: 'bot',
-                time: getTime(),
-            };
-            setMessages(prev => [...prev, botMsg]);
         } catch (error) {
             console.error('Error communicating with chatbot API:', error);
             const botMsg: Message = {
